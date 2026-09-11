@@ -25,7 +25,7 @@ class Account:
         self._balance = 0
 
     def deposit(self, amount: int):
-        self._balance = + amount
+        self._balance += amount
 
     def get_balance(self):
         return self._balance
@@ -35,4 +35,6 @@ my_account = Account('Luis Mejia')
 
 print(my_account.get_balance())
 my_account.deposit(100)
+my_account.deposit(100)
+
 print(my_account.get_balance())
