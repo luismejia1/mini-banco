@@ -1,16 +1,21 @@
 import random
-"""
-account_number {
-    name
-    balance
-    history : [
-        {
-            to:
-            amount:
-        }
-    ]
-}
-"""
+
+
+class BankException(Exception):
+    """Exception raised for custom error scenarios."""
+    pass
+
+
+class InsufficientFunds(BankException):
+    pass
+
+
+class InvalidAmount(BankException):
+    pass
+
+
+class Bank:
+    pass
 
 
 def random_n_digits(n):
@@ -25,10 +30,26 @@ class Account:
         self._balance = 0
 
     def deposit(self, amount: int):
+
+        if amount <= 0:
+            raise InvalidAmount('El monto debe ser mayor que cero')
         self._balance += amount
 
     def get_balance(self):
         return self._balance
+
+    def withdraw(self, amount: int):
+        """
+        Retorna el restante y la cantidad retirada
+        """
+
+        if amount <= 0:
+            raise InvalidAmount('El monto debe ser mayor que cero')
+        if self.get_balance() < amount:
+            raise InsufficientFunds('Fondos insuficientes')
+
+        self._balance = self.get_balance() - amount
+        return {'remaining': self.get_balance(), 'withdrawal_amount': amount}
 
 
 my_account = Account('Luis Mejia')
@@ -38,3 +59,5 @@ my_account.deposit(100)
 my_account.deposit(100)
 
 print(my_account.get_balance())
+
+print(my_account.withdraw(50))
