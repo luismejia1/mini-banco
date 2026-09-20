@@ -68,9 +68,6 @@ class Account:
         self.name = name
         self._balance = 0
 
-    def get_account_detail(self):
-        return {self.name, self.account_number}
-
     def deposit(self, amount: int):
 
         if amount <= 0:
@@ -94,11 +91,11 @@ class Account:
         return {'remaining': self.get_balance(), 'withdrawal_amount': amount}
 
 
-def read_input_int(input: str):
+def read_input_int(user_input: str):
     try:
-        option = int(input)
+        option = int(user_input)
     except ValueError:
-        raise InvalidInput(f"Invalid input: {input!r}") from None
+        raise InvalidInput(f"Invalid input: {user_input!r}") from None
     return option
 
 
