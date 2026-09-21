@@ -1,4 +1,11 @@
 import random
+from enum import Enum
+
+
+class Operations(Enum):
+    Retiro = 'Retiro'
+    Deposito = 'Deposito'
+    Transferencia = 'Transferencia'
 
 
 class InvalidInput(Exception):
@@ -14,7 +21,7 @@ class BankException(Exception):
     pass
 
 
-class ExistsAccount(BankException):
+class AccountNotFound(BankException):
     pass
 
 
@@ -30,14 +37,6 @@ def random_n_digits_str(n):
     return str(random.randint(10**(n-1), 10**n - 1))
 
 
-"""
-my_dict: dict[str, MyItem] = {
-    "asas": {"name": "hello", "value": 42, "active": True},
-    "other": {"name": "world", "value": 7, "active": False},
-}
-"""
-
-
 class Bank:
     accounts = {}
 
@@ -49,13 +48,26 @@ class Bank:
 
     def create_account(self, name: str) -> str:
         account_number = random_n_digits_str(10)
-        while self.account_exists(account_number) == True:
+        while self.account_exists(account_number):
             account_number = random_n_digits_str(10)
 
         account = Account(name=name, account_number=account_number)
         self.accounts.update({account_number: account})
 
         return account_number
+
+    def transfer(self, from_account: str, to_account: str, amount: int):
+        origin_account = self.get_account(from_account)
+        target_account = self.get_account(to_account)
+        if origin_account is None:
+            raise AccountNotFound("Cuenta de origen no encontrada")
+        if target_account is None:
+            raise AccountNotFound("Cuenta de destino no encontrada")
+
+        # Retiro de la cuenta origen, sino tiene fondos, lanzo exception, se que puede hacerse mejor guardando lo que recibe, pero
+        # si no lanza excepcion es que tood salio ok asi que lo dejo lo as simple, usando el prnicipio KISS
+        origin_account.withdraw(amount, is_transfer=True)
+        target_account.deposit(amount)
 
     def get_account(self, account_number: str) -> Account | None:
         return self.accounts.get(account_number)
@@ -67,17 +79,20 @@ class Account:
         self.account_number = account_number
         self.name = name
         self._balance = 0
+        self.history = []
 
     def deposit(self, amount: int):
 
         if amount <= 0:
             raise InvalidAmount('El monto debe ser mayor que cero')
         self._balance += amount
+        self.__add_to_history(amount=amount, total=self._balance,
+                              operation=Operations.Deposito.value)
 
     def get_balance(self):
         return self._balance
 
-    def withdraw(self, amount: int):
+    def withdraw(self, amount: int, is_transfer: bool = False):
         """
         Retorna el restante y la cantidad retirada
         """
@@ -88,7 +103,17 @@ class Account:
             raise InsufficientFunds('Fondos insuficientes')
 
         self._balance = self.get_balance() - amount
+        operation = Operations.Transferencia.value if is_transfer else Operations.Retiro.value
+        self.__add_to_history(amount=amount, total=self._balance,
+                              operation=operation)
         return {'remaining': self.get_balance(), 'withdrawal_amount': amount}
+
+    def __add_to_history(self, amount: int, total: int, operation: str):
+        self.history.append({
+            'operation': operation,
+            'amount': amount,
+            'total': total
+        })
 
 
 def read_input_int(user_input: str):
@@ -150,8 +175,10 @@ def main():
                         amount = read_input_int(input(
                             'Ingresa la cantidad de dinero que quieres depositar: \n'))
                         account.deposit(amount=amount)
+                        print(
+                            f'Se ha depositado {amount} a la cuenta {account_number}')
                     except InvalidInput:
-                        print('Entrada invalida, prueba nuevamente')
+                        print('Entrada input invalida, prueba nuevamente')
                         continue
                     except BankException:
                         print('La cantidad no es valida')
@@ -159,7 +186,25 @@ def main():
                     print('No existe una cuenta con este numero')
 
             case 3:
-                print('3. Retirar de una cuenta')
+                account_number = input(
+                    'Ingresa el numero de cuenta de la que quieres retirar: \n')
+
+                account = bank.get_account(account_number)
+                if account is not None:
+                    try:
+                        amount = read_input_int(
+                            input('Ingresa la cantidad de dinero que quieres retirar: \n'))
+                        result = account.withdraw(amount)
+                        print(
+                            f'Se ha retirado {amount} de la cuenta {account_number}, el saldo restante es {result.get('remaining')}')
+
+                    except InvalidInput:
+                        print('Caracter invalido, favor prueba nuevamente')
+                        continue
+                    except BankException as e:
+                        print(e)
+                else:
+                    print('No existe una cuenta con este numero')
 
             case 4:
                 account_number = input(
@@ -172,10 +217,41 @@ def main():
                     print('No existe una cuenta con este numero')
 
             case 5:
-                print('5. Consultar hitorial de movimientos')
+                account_number = input(
+                    'Ingresa el numero de cuenta de la cual deseas ver el historial: \n ')
+                account = bank.get_account(account_number)
+
+                if account is not None:
+                    for index, item in enumerate(account.history):
+                        print(
+                            f'{index + 1} - Se ha hecho un {item.get('operation')} de {item.get('amount')} y la cuenta tiene un total de {item.get('total')}')
+                else:
+                    print('No existe una cuenta con este numero')
 
             case 6:
-                print('6. Transferir de una cuenta a otra')
+                origin_account_number = input(
+                    'Ingresa el numero de cuenta de origen para la transferencia: \n')
+
+                target_account_number = input(
+                    'Ingresa el numero de cuenta de destino para la transferencia: \n')
+
+                if origin_account_number == target_account_number:
+                    print('No se puede hacer una transferencia a la misma cuenta')
+                else:
+                    try:
+                        amount = read_input_int(
+                            input('Ingresa la cantidad de dinero que quieres transferir: \n'))
+
+                        bank.transfer(origin_account_number,
+                                      target_account_number, amount)
+
+                        print(
+                            'Transferencia realizada correctamente')
+                    except InvalidInput:
+                        print('Caracter invalido, favor prueba nuevamente')
+                        continue
+                    except BankException as e:
+                        print(e)
 
             case 7:
                 print('Adios 👋')
